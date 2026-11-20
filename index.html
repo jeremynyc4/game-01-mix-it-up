@@ -404,8 +404,34 @@
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 </style>
+<style>
+  /* The ABCDaGames sign at the top of the page. Tapping it goes back to the home page for all the games. */
+  .home-sign {
+    display: inline-block;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 14px;
+    padding: 8px 14px 9px;
+    background: var(--paper, #FFF9EC);
+    color: var(--ink, #2B2A33);
+    border: 3px solid var(--ink, #2B2A33);
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 var(--ink, #2B2A33);
+    text-decoration: none;
+    line-height: 1.15;
+    font-family: ui-rounded, "Arial Rounded MT Bold", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  }
+
+  .home-sign b { display: block; font-size: 24px; letter-spacing: -0.3px; }
+  .home-sign i { display: block; font-style: normal; font-size: 13px; color: var(--muted, #5F5B6B); }
+  /* This game has its own colors under some of the same names, and a dark mode, so the sign gets fixed colors here. */
+  .home-sign { background: #FFF9EC; color: #2B2A33; border-color: #2B2A33; box-shadow: 4px 4px 0 #2B2A33; }
+  .home-sign i { color: #5F5B6B; }
+  .home-row { max-width: 480px; margin: 0 auto; }
+</style>
 </head>
 <body>
+<div class="home-row"><a class="home-sign" href="https://jeremynyc4.github.io/games/"><b>ABCDaGames</b><i>Small games to play in a browser. Tap one to play.</i></a></div>
 <div class="scene" aria-hidden="true">
   <svg width="0" height="0" style="position: absolute">
     <defs>
