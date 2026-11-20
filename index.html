@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mix It Up</title>
+<style>
+  /* The reset the artifact wrapper supplied: no body margin, room for phone notches, and a working hidden attribute. */
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+<style>
+  /* Layout: one narrow centered column; the start, play, and end screens swap in place, and the play area is a sheet of paper for paint or a dark stage for light. */
+  :root {
+    --bg: #FAF0EA;
+    --fg: #2E2340;
+    --muted: #6E6280;
+    --card: #FFFFFF;
+    --line: #E8D9CF;
+    --cocoa: #6B3E26;
+    --cocoa-deep: #46281A;
+    --cocoa-ink: #FFF8F1;
+    --star: #E9A21B;
+    --mug: #3F7FB5;
+    --mug-rim: #78A9D3;
+    --mug-inside: #2C5C86;
+    --cocoa-liquid: #6B3E26;
+    --mallow: #FFFFFF;
+    --mallow-edge: #E6D9CC;
+    --paper: #FFFCF7;
+    --paper-ink: #2E2340;
+    --paper-line: #EADCCF;
+    --paper-hover: #F5EBE1;
+    --stage: #15121F;
+    --stage-glow: #2B2442;
+    --stage-ink: #F3EEFA;
+    --stage-line: #2E2843;
+    --stage-hover: #231E35;
+    --scene-opacity: 1;
+    --font-display: ui-rounded, "Arial Rounded MT Bold", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --font-body: ui-rounded, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1D1724;
+      --fg: #F5EDF3;
+      --muted: #B8AAC3;
+      --card: #282030;
+      --line: #3B3147;
+      --cocoa: #D9A074;
+      --cocoa-deep: #9A6C4B;
+      --cocoa-ink: #23170F;
+      --scene-opacity: 0.45;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1D1724;
+    --fg: #F5EDF3;
+    --muted: #B8AAC3;
+    --card: #282030;
+    --line: #3B3147;
+    --cocoa: #D9A074;
+    --cocoa-deep: #9A6C4B;
+    --cocoa-ink: #23170F;
+    --scene-opacity: 0.45;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { background: var(--bg); }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.45;
+    padding-block: 20px 36px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .app { max-width: 480px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* Fall scene behind the game, painted in watercolor with SVG filters. It never takes taps, and the game panels stay solid so the play colors read clearly. */
+  .scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: var(--scene-opacity);
+    --k: 1px;
+  }
+
+  .scene svg { position: absolute; display: block; overflow: visible; }
+  .scene .paper { top: 0; left: 0; width: 100%; height: 100%; opacity: 0.08; }
+  .scene .wash { width: 70vmax; height: 70vmax; }
+  .scene .wash-a { top: -30vmax; left: -28vmax; }
+  .scene .wash-b { bottom: -34vmax; right: -30vmax; }
+  .scene .creek { left: 0; bottom: 0; width: 100%; height: clamp(80px, 17vh, 160px); }
+  .scene .sweaters { left: -6px; bottom: clamp(44px, 11vh, 110px); width: calc(120 * var(--k)); aspect-ratio: 160 / 110; }
+  .scene .boots { right: 2vw; bottom: clamp(40px, 10vh, 100px); width: calc(100 * var(--k)); aspect-ratio: 140 / 100; }
+  .scene .cup { right: calc(2vw + 96 * var(--k)); bottom: clamp(46px, 11vh, 108px); width: calc(34 * var(--k)); aspect-ratio: 60 / 64; }
+
+  .scene .leaf {
+    width: calc(var(--s) * var(--k));
+    height: calc(var(--s) * var(--k));
+    color: var(--leaf);
+    fill: var(--leaf);
+    transform: rotate(var(--r));
+    animation: sway var(--d) ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @keyframes sway {
+    0%, 100% { transform: rotate(var(--r)) translateY(0); }
+    50% { transform: rotate(calc(var(--r) + 9deg)) translateY(5px); }
+  }
+
+  @media (min-width: 900px) {
+    .scene { --k: 1.5px; }
+  }
+
+  .screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(42px, 12vw, 60px);
+    line-height: 1;
+    margin: 10px 0 0;
+    text-wrap: balance;
+  }
+
+  .rules { margin: 0; max-width: 34ch; text-wrap: balance; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 34px;
+    line-height: 1.1;
+    margin: 0;
+  }
+
+  /* The play area. Paint sits on paper; light shines on a dark stage. */
+  .panel {
+    width: 100%;
+    border-radius: 22px;
+    padding: 18px 14px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel.paint {
+    background: var(--paper);
+    color: var(--paper-ink);
+    border: 2px solid var(--paper-line);
+    box-shadow: 0 6px 0 var(--paper-line);
+  }
+
+  .panel.light {
+    background: radial-gradient(ellipse at 50% 0%, var(--stage-glow), var(--stage) 70%);
+    color: var(--stage-ink);
+    border: 2px solid var(--stage-line);
+    box-shadow: 0 6px 0 var(--stage-line);
+  }
+
+  .preview-row { display: flex; justify-content: center; gap: 14px; }
+  .preview .cellsw { width: 64px; }
+  .preview-caption { margin: 12px 0 0; font-size: 15px; }
+
+  /* Paint or Light switch. */
+  .toggle {
+    display: inline-flex;
+    padding: 4px;
+    gap: 4px;
+    border-radius: 999px;
+    background: var(--card);
+    border: 2px solid var(--line);
+  }
+
+  .toggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--fg);
+    font: 700 17px var(--font-display);
+    cursor: pointer;
+  }
+
+  .toggle button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+  .ticon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .btn {
+    min-height: 54px;
+    min-width: 180px;
+    padding: 0 30px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--cocoa);
+    color: var(--cocoa-ink);
+    font: 800 19px var(--font-display);
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--cocoa-deep);
+  }
+
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--cocoa-deep); }
+
+  button:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+  .panel.paint button:focus-visible { outline-color: var(--paper-ink); }
+  .panel.light button:focus-visible { outline-color: var(--stage-ink); }
+
+  /* Score bar. */
+  .topbar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 12px;
+    font: 700 16px var(--font-display);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .scorebox { display: inline-flex; align-items: center; gap: 10px; }
+  .marks { display: inline-flex; gap: 6px; }
+  .mark { width: 22px; height: 22px; display: inline-block; }
+  .mark.pending { border-radius: 50%; border: 3px solid var(--line); }
+  .mark.done { border-radius: 50%; background: var(--line); transform: scale(0.6); }
+  .mark.star { fill: var(--star); }
+
+  /* The mixing sum: first color + your pick = goal color. */
+  .equation { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+
+  .cellsw {
+    width: clamp(58px, 19vw, 78px);
+    max-width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+  }
+
+  .op {
+    width: 22px;
+    font: 800 30px var(--font-display);
+    line-height: clamp(58px, 19vw, 78px);
+    opacity: 0.7;
+  }
+
+  .cap { font-size: 14px; font-weight: 700; min-height: 1.3em; }
+
+  .feedback { min-height: 3.2em; margin: 14px 0 12px; font-size: 17px; text-wrap: balance; }
+
+  .choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+  .choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-height: 96px;
+    padding: 10px 4px 8px;
+    border: 3px solid transparent;
+    border-radius: 16px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .panel.paint .choice:hover:not(:disabled) { background: var(--paper-hover); }
+  .panel.light .choice:hover:not(:disabled) { background: var(--stage-hover); }
+  .choice:disabled { cursor: default; }
+  .choice.tried { opacity: 0.3; }
+  .choice.right { border-color: currentColor; }
+  .swbox { width: 56px; height: 56px; display: grid; place-items: center; }
+
+  /* Color swatches: paint blobs and light glows. */
+  svg.sw { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  .glow {
+    display: block;
+    width: 76%;
+    height: 76%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 58%), var(--c);
+    box-shadow: 0 0 18px 4px var(--c);
+  }
+
+  .sw-inline {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .sw-inline .glow { box-shadow: 0 0 8px 2px var(--c); }
+
+  .ring {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    border: 3px solid currentColor;
+    opacity: 0.35;
+    display: grid;
+    place-items: center;
+    font: 800 26px var(--font-display);
+  }
+
+  .bit {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: burst 0.9s ease-out forwards;
+  }
+
+  .pop { animation: pop 0.55s ease-out; }
+  .nudge { animation: nudge 0.35s ease-in-out; }
+  .drop { animation: drop 0.25s ease-out; }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes nudge {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  @keyframes drop {
+    from { transform: scale(0.6); }
+    to { transform: scale(1); }
+  }
+
+  @keyframes burst {
+    from { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 1; }
+    to { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; }
+  }
+
+  /* End screen mug. */
+  .mug { width: min(220px, 70%); height: auto; }
+  .mug .steam path { fill: none; stroke: var(--muted); stroke-width: 5; stroke-linecap: round; animation: steam 2.4s ease-in-out infinite; }
+  .mug .steam path:nth-child(2) { animation-delay: 0.8s; }
+  .mug .steam path:nth-child(3) { animation-delay: 1.6s; }
+  .mug .saucer { fill: var(--line); }
+  .mug .handle { fill: none; stroke: var(--mug); stroke-width: 10; }
+  .mug .mug-body { fill: var(--mug); }
+  .mug .mug-rim { fill: var(--mug-rim); }
+  .mug .inside { fill: var(--mug-inside); }
+  .mug .cocoa-top { fill: var(--cocoa-liquid); }
+  .mug .mallow { fill: var(--mallow); stroke: var(--mallow-edge); stroke-width: 1.5; }
+  .mug.empty .cocoa, .mug.empty .steam { display: none; }
+
+  @keyframes steam {
+    0% { opacity: 0; transform: translateY(6px); }
+    40% { opacity: 0.8; }
+    100% { opacity: 0; transform: translateY(-10px); }
+  }
+
+  .end-score { margin: 0; max-width: 32ch; text-wrap: balance; }
+
+  .prize {
+    margin: 0;
+    max-width: 22ch;
+    font: 800 22px var(--font-display);
+    color: var(--cocoa);
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+  <svg width="0" height="0" style="position: absolute">
+    <defs>
+      <!-- Watercolor for small pieces: wobbly edges, pigment pooled at the rim, and paper grain. -->
+      <filter id="wcSmall" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="4" result="warp"></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G" result="wobble"></feDisplacementMap>
+        <feGaussianBlur in="wobble" stdDeviation="0.5" result="soft"></feGaussianBlur>
+        <feMorphology in="soft" operator="erode" radius="1.6" result="inner"></feMorphology>
+        <feComposite in="soft" in2="inner" operator="out" result="rim"></feComposite>
+        <feMerge result="pooled"><feMergeNode in="soft"></feMergeNode><feMergeNode in="rim"></feMergeNode></feMerge>
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed="9" result="grain"></feTurbulence>
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.8 0 0 0 0.45" result="grainMask"></feColorMatrix>
+        <feComposite in="pooled" in2="grainMask" operator="in"></feComposite>
+      </filter>
+      <!-- The same watercolor treatment, scaled for the wide creek. -->
+      <filter id="wcBig" x="-5%" y="-20%" width="110%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.04" numOctaves="3" seed="6" result="warp"></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="warp" scale="14" xChannelSelector="R" yChannelSelector="G" result="wobble"></feDisplacementMap>
+        <feGaussianBlur in="wobble" stdDeviation="1.2" result="soft"></feGaussianBlur>
+        <feMorphology in="soft" operator="erode" radius="3" result="inner"></feMorphology>
+        <feComposite in="soft" in2="inner" operator="out" result="rim"></feComposite>
+        <feMerge result="pooled"><feMergeNode in="soft"></feMergeNode><feMergeNode in="rim"></feMergeNode></feMerge>
+        <feTurbulence type="fractalNoise" baseFrequency="0.3" numOctaves="2" seed="11" result="grain"></feTurbulence>
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.8 0 0 0 0.45" result="grainMask"></feColorMatrix>
+        <feComposite in="pooled" in2="grainMask" operator="in"></feComposite>
+      </filter>
+      <!-- Big soft washes of color in the corners. -->
+      <filter id="wcWash" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="3" result="warp"></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="warp" scale="12" xChannelSelector="R" yChannelSelector="G" result="wobble"></feDisplacementMap>
+        <feGaussianBlur in="wobble" stdDeviation="3"></feGaussianBlur>
+      </filter>
+      <!-- Faint paper texture over the whole page. -->
+      <filter id="paperGrain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="2"></feTurbulence>
+        <feColorMatrix type="saturate" values="0"></feColorMatrix>
+      </filter>
+      <symbol id="maple" viewBox="0 0 100 100">
+        <path fill-opacity="0.85" d="M50 4 L56 22 L66 16 L64 30 L84 26 L76 40 L94 48 L74 56 L80 70 L60 64 L54 74 L50 72 L46 74 L40 64 L20 70 L26 56 L6 48 L24 40 L16 26 L36 30 L34 16 L44 22 Z"></path>
+        <path d="M50 72 Q52 84 47 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="ovalLeaf" viewBox="0 0 100 100">
+        <path fill-opacity="0.85" d="M50 6 C74 22 80 52 50 84 C20 52 26 22 50 6 Z"></path>
+        <path d="M50 84 Q52 92 48 98" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+        <path d="M50 14 L50 80" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2"></path>
+      </symbol>
+      <symbol id="sweater" viewBox="0 0 100 100">
+        <path style="fill: var(--sw-main)" fill-opacity="0.85" d="M36 22 Q50 32 64 22 L80 28 Q86 30 88 36 L96 62 L82 68 L72 46 L72 88 L28 88 L28 46 L18 68 L4 62 L12 36 Q14 30 20 28 Z"></path>
+        <path style="fill: var(--sw-rib)" fill-opacity="0.85" d="M36 22 Q50 32 64 22 L61 18 Q50 27 39 18 Z"></path>
+        <rect style="fill: var(--sw-rib)" fill-opacity="0.85" x="28" y="82" width="44" height="8"></rect>
+        <path style="fill: var(--sw-rib)" fill-opacity="0.85" d="M96 62 L82 68 L84 73 L98 67 Z M4 62 L18 68 L16 73 L2 67 Z"></path>
+        <rect style="fill: var(--sw-stripe)" fill-opacity="0.85" x="28" y="52" width="44" height="8"></rect>
+        <path style="fill: var(--sw-rib)" fill-opacity="0.85" d="M34 53 L37 56 L34 59 L31 56 Z M44 53 L47 56 L44 59 L41 56 Z M54 53 L57 56 L54 59 L51 56 Z M64 53 L67 56 L64 59 L61 56 Z"></path>
+      </symbol>
+      <symbol id="boot" viewBox="0 0 110 100">
+        <path fill="#B07A45" fill-opacity="0.85" d="M18 84 L18 28 Q18 18 28 18 L46 18 Q52 18 52 24 L52 50 Q70 52 86 62 Q98 70 96 84 Z"></path>
+        <path fill="#8E3B2C" fill-opacity="0.85" d="M16 30 L16 22 Q16 14 26 14 L46 14 Q54 14 54 22 L54 30 Z"></path>
+        <path fill="#7E5230" fill-opacity="0.85" d="M66 56 Q88 60 95 74 Q97 79 96 84 L64 84 Q60 70 66 56 Z"></path>
+        <path fill="#4A3326" fill-opacity="0.9" d="M14 84 L96 84 Q102 84 102 90 Q102 96 96 96 L14 96 Q10 96 10 90 Q10 84 14 84 Z"></path>
+        <path fill="none" stroke="#F2E3C6" stroke-width="2" stroke-linecap="round" d="M46 34 L58 38 M58 34 L46 38 M46 42 L58 46 M58 42 L46 46 M48 50 L62 53"></path>
+      </symbol>
+    </defs>
+  </svg>
+
+  <svg class="paper" preserveAspectRatio="none"><rect width="100%" height="100%" filter="url(#paperGrain)"></rect></svg>
+
+  <svg class="wash wash-a" viewBox="0 0 100 100"><g filter="url(#wcWash)"><circle cx="50" cy="50" r="38" fill="#F2C48D" fill-opacity="0.45"></circle><circle cx="62" cy="40" r="22" fill="#E9A07A" fill-opacity="0.3"></circle></g></svg>
+  <svg class="wash wash-b" viewBox="0 0 100 100"><g filter="url(#wcWash)"><circle cx="50" cy="50" r="38" fill="#B9C9A0" fill-opacity="0.4"></circle><circle cx="38" cy="58" r="20" fill="#D9B27C" fill-opacity="0.3"></circle></g></svg>
+
+  <svg class="creek" viewBox="0 0 1000 160" preserveAspectRatio="none">
+    <g filter="url(#wcBig)">
+      <path fill="#C7B27A" fill-opacity="0.4" d="M0 30 C150 10 300 40 450 25 C620 8 800 35 1000 20 L1000 160 L0 160 Z"></path>
+      <path fill="#7FB0CF" fill-opacity="0.6" d="M0 70 C160 50 330 85 500 66 C680 48 840 80 1000 62 L1000 160 L0 160 Z"></path>
+      <path fill="#5D90BA" fill-opacity="0.45" d="M0 105 C200 92 380 118 560 100 C740 84 880 110 1000 98 L1000 160 L0 160 Z"></path>
+      <path fill="#8E8478" fill-opacity="0.55" d="M272 76 Q300 62 328 76 Q300 86 272 76 Z M622 66 Q644 55 666 66 Q644 74 622 66 Z M850 74 Q880 60 910 74 Q880 85 850 74 Z"></path>
+    </g>
+    <path fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke" d="M120 96 q30 -6 60 0 M420 86 q30 -6 60 0 M760 94 q30 -6 60 0 M240 130 q40 -6 80 0 M600 126 q40 -6 80 0"></path>
+  </svg>
+
+  <svg class="sweaters" viewBox="0 0 160 110">
+    <g filter="url(#wcSmall)">
+      <use href="#sweater" x="58" y="4" width="96" height="96" transform="rotate(9 106 52)" style="--sw-main: #D9A441; --sw-rib: #B8862E; --sw-stripe: #F3E6CC"></use>
+      <use href="#sweater" x="4" y="12" width="96" height="96" transform="rotate(-8 52 60)" style="--sw-main: #A63D40; --sw-rib: #7E2C30; --sw-stripe: #F3E6CC"></use>
+    </g>
+  </svg>
+
+  <svg class="boots" viewBox="0 0 140 100">
+    <g filter="url(#wcSmall)">
+      <use href="#boot" x="28" y="-4" width="110" height="100" opacity="0.8"></use>
+      <use href="#boot" x="0" y="0" width="110" height="100"></use>
+    </g>
+  </svg>
+
+  <svg class="cup" viewBox="0 0 60 64">
+    <g filter="url(#wcSmall)">
+      <path fill="none" stroke="#B9A79A" stroke-width="2.5" stroke-linecap="round" d="M24 18 c-4 -5 4 -8 0 -14 M34 18 c-4 -5 4 -8 0 -14"></path>
+      <circle cx="45" cy="38" r="7" fill="none" stroke="#C8553D" stroke-width="4"></circle>
+      <path fill="#C8553D" fill-opacity="0.9" d="M14 28 L46 28 L44 52 Q43 56 38 56 L22 56 Q17 56 16 52 Z"></path>
+      <ellipse cx="30" cy="28" rx="16" ry="4" fill="#E07B62"></ellipse>
+      <ellipse cx="30" cy="28.5" rx="13" ry="2.8" fill="#6B3E26"></ellipse>
+      <rect x="25" y="25" width="5" height="4" rx="1.2" fill="#FFFFFF"></rect>
+      <ellipse cx="30" cy="58" rx="20" ry="3.5" fill="#B9A79A" fill-opacity="0.6"></ellipse>
+    </g>
+  </svg>
+
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 2%; left: 2%; --s: 54; --r: -20deg; --leaf: #D9622B; --d: 9s"><g filter="url(#wcSmall)"><use href="#maple"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 10%; left: 16%; --s: 28; --r: 35deg; --leaf: #E8A33D; --d: 7s"><g filter="url(#wcSmall)"><use href="#ovalLeaf"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 3%; right: 4%; --s: 48; --r: 15deg; --leaf: #B8432F; --d: 10s"><g filter="url(#wcSmall)"><use href="#maple"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 15%; right: 15%; --s: 26; --r: -40deg; --leaf: #C58B2A; --d: 8s"><g filter="url(#wcSmall)"><use href="#ovalLeaf"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 36%; left: 1%; --s: 34; --r: 60deg; --leaf: #9C6B3A; --d: 11s"><g filter="url(#wcSmall)"><use href="#ovalLeaf"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 44%; right: 2%; --s: 40; --r: -10deg; --leaf: #E07A2E; --d: 9.5s"><g filter="url(#wcSmall)"><use href="#maple"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 60%; left: 5%; --s: 26; --r: 25deg; --leaf: #E8A33D; --d: 8.5s"><g filter="url(#wcSmall)"><use href="#maple"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="top: 66%; right: 7%; --s: 30; --r: -25deg; --leaf: #B8432F; --d: 7.5s"><g filter="url(#wcSmall)"><use href="#ovalLeaf"></use></g></svg>
+  <svg class="leaf" viewBox="0 0 100 100" style="bottom: clamp(20px, 5vh, 52px); left: 44%; --s: 30; --r: 10deg; --leaf: #D9622B; --d: 6s"><g filter="url(#wcSmall)"><use href="#maple"></use></g></svg>
+</div>
+
+<main class="app">
+
+  <section id="startScreen" class="screen">
+    <h1 class="title">Mix It Up</h1>
+    <p class="rules">Tap the color that mixes with the first color to make the second, and get two of three right on your first tap to win hot cocoa.</p>
+    <div id="startPreview" class="panel preview paint"></div>
+    <div class="toggle" role="group" aria-label="Color type">
+      <button type="button" id="startPaint" data-mode="paint" aria-pressed="true"><svg class="ticon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4.5 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 3-6.5 6-11z"></path></svg>Paint</button>
+      <button type="button" id="startLight" data-mode="light" aria-pressed="false"><svg class="ticon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" fill="none"></path></svg>Light</button>
+    </div>
+    <button type="button" id="startBtn" class="btn">Start</button>
+  </section>
+
+  <section id="playScreen" class="screen" hidden>
+    <div class="topbar">
+      <span id="roundLabel"></span>
+      <span class="scorebox"><span id="marks" class="marks"></span><span id="scoreLabel"></span></span>
+    </div>
+    <div id="playPanel" class="panel paint">
+      <div class="equation">
+        <div class="cell"><div id="eqShown" class="cellsw"></div><span id="eqShownLabel" class="cap"></span></div>
+        <span class="op" aria-hidden="true">+</span>
+        <div class="cell"><div id="eqSlot" class="cellsw"></div><span id="eqSlotLabel" class="cap"></span></div>
+        <span class="op" aria-hidden="true">=</span>
+        <div class="cell"><div id="eqTarget" class="cellsw"></div><span id="eqTargetLabel" class="cap"></span></div>
+      </div>
+      <p id="feedback" class="feedback" aria-live="polite"></p>
+      <div id="choices" class="choices"></div>
+    </div>
+    <button type="button" id="nextBtn" class="btn" hidden>Next Round</button>
+  </section>
+
+  <section id="endScreen" class="screen" hidden>
+    <svg id="mug" class="mug full" viewBox="0 0 160 150" role="img" aria-label="A steaming mug of hot cocoa">
+      <g class="steam">
+        <path d="M60 44c-7-8 7-14 0-24"></path>
+        <path d="M80 40c-7-8 7-14 0-24"></path>
+        <path d="M100 44c-7-8 7-14 0-24"></path>
+      </g>
+      <ellipse class="saucer" cx="80" cy="136" rx="62" ry="10"></ellipse>
+      <circle class="handle" cx="124" cy="92" r="17"></circle>
+      <path class="mug-body" d="M34 58 L126 58 L120 120 Q118 132 106 132 L54 132 Q42 132 40 120 Z"></path>
+      <ellipse class="mug-rim" cx="80" cy="58" rx="46" ry="10"></ellipse>
+      <ellipse class="inside" cx="80" cy="59" rx="39" ry="7"></ellipse>
+      <g class="cocoa">
+        <ellipse class="cocoa-top" cx="80" cy="59" rx="39" ry="7"></ellipse>
+        <rect class="mallow" x="62" y="53" width="11" height="9" rx="3"></rect>
+        <rect class="mallow" x="78" y="51" width="11" height="9" rx="3" transform="rotate(12 83 55)"></rect>
+        <rect class="mallow" x="92" y="54" width="10" height="8" rx="3"></rect>
+      </g>
+    </svg>
+    <h2 id="endTitle"></h2>
+    <p id="endScore" class="end-score"></p>
+    <p id="endPrize" class="prize">You've won a digital cup of hot cocoa!</p>
+    <div class="toggle" role="group" aria-label="Color type">
+      <button type="button" id="endPaint" data-mode="paint" aria-pressed="true"><svg class="ticon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4.5 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 3-6.5 6-11z"></path></svg>Paint</button>
+      <button type="button" id="endLight" data-mode="light" aria-pressed="false"><svg class="ticon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" fill="none"></path></svg>Light</button>
+    </div>
+    <button type="button" id="againBtn" class="btn">Play Again</button>
+  </section>
+
+</main>
+
+<script id="logic">
+// >>>>> Mix It Up: Rules and Color Data <<<<<
+// Comments in this page follow one consistent style on purpose. The page is
+// built and changed with AI help, and clear, consistent comments are how the
+// next person, human or AI, learns why the code works the way it does.
+// This block holds only data and pure functions, with no page access, so a
+// test can load it alone and check that every round has one right answer.
+
+const cRoundsPerGame_int = 3;
+const cWinsNeeded_int = 2;
+const cPaintMode_str = 'paint';
+const cLightMode_str = 'light';
+const cMixJoiner_str = '+';
+
+// Every color the game can show or make, by color type.
+const cColors_obj = {
+  paint: {
+    red: { name: 'red', label: 'Red', hex: '#E3342F' },
+    yellow: { name: 'yellow', label: 'Yellow', hex: '#FFC928' },
+    blue: { name: 'blue', label: 'Blue', hex: '#2563C9' },
+    orange: { name: 'orange', label: 'Orange', hex: '#F7821B' },
+    green: { name: 'green', label: 'Green', hex: '#3A9D3F' },
+    purple: { name: 'purple', label: 'Purple', hex: '#8645B0' },
+    redOrange: { name: 'red-orange', label: 'Red-Orange', hex: '#EE5A24' },
+    yellowOrange: { name: 'yellow-orange', label: 'Yellow-Orange', hex: '#FCA51F' },
+    yellowGreen: { name: 'yellow-green', label: 'Yellow-Green', hex: '#9BC53D' },
+    blueGreen: { name: 'blue-green', label: 'Blue-Green', hex: '#1F9A8A' },
+    bluePurple: { name: 'blue-purple', label: 'Blue-Purple', hex: '#5A4FC2' },
+    redPurple: { name: 'red-purple', label: 'Red-Purple', hex: '#B83280' },
+    brown: { name: 'muddy brown', label: 'Muddy Brown', hex: '#7B5032' }
+  },
+  light: {
+    red: { name: 'red', label: 'Red', hex: '#FF2A2A' },
+    green: { name: 'green', label: 'Green', hex: '#2BE04A' },
+    blue: { name: 'blue', label: 'Blue', hex: '#3D6BFF' },
+    yellow: { name: 'yellow', label: 'Yellow', hex: '#FFF23A' },
+    cyan: { name: 'cyan', label: 'Cyan', hex: '#2CF0FF' },
+    magenta: { name: 'magenta', label: 'Magenta', hex: '#FF3AF2' },
+    orange: { name: 'orange', label: 'Orange', hex: '#FF8A1F' },
+    rose: { name: 'rose pink', label: 'Rose Pink', hex: '#FF2D8F' },
+    lime: { name: 'lime green', label: 'Lime Green', hex: '#9DFF2B' },
+    mint: { name: 'mint green', label: 'Mint Green', hex: '#2BFF9A' },
+    sky: { name: 'sky blue', label: 'Sky Blue', hex: '#2B9BFF' },
+    violet: { name: 'violet', label: 'Violet', hex: '#8A3BFF' },
+    white: { name: 'white', label: 'White', hex: '#FFFFFF' }
+  }
+};
+
+// The three colors each color type starts from.
+const cPrimaries_obj = {
+  paint: ['red', 'yellow', 'blue'],
+  light: ['red', 'green', 'blue']
+};
+
+// Each goal color and the two primaries that make it. Every round is built
+// from one of these, so every round's answer is known before it is shown.
+const cRecipes_obj = {
+  paint: [
+    { target: 'orange', a: 'red', b: 'yellow' },
+    { target: 'green', a: 'yellow', b: 'blue' },
+    { target: 'purple', a: 'red', b: 'blue' }
+  ],
+  light: [
+    { target: 'yellow', a: 'red', b: 'green' },
+    { target: 'cyan', a: 'green', b: 'blue' },
+    { target: 'magenta', a: 'red', b: 'blue' }
+  ]
+};
+
+// What each pair makes when a primary is mixed with any of the six choices.
+// A color mixed with itself makes itself, so those pairs are not listed.
+// Paint follows the art-class color wheel, where a primary plus the mix of
+// the other two makes muddy brown. Light adds the beams together, so a
+// primary plus the mix of the other two makes white.
+const cMixList_obj = {
+  paint: [
+    { a: 'red', b: 'yellow', makes: 'orange' },
+    { a: 'yellow', b: 'blue', makes: 'green' },
+    { a: 'red', b: 'blue', makes: 'purple' },
+    { a: 'red', b: 'orange', makes: 'redOrange' },
+    { a: 'red', b: 'green', makes: 'brown' },
+    { a: 'red', b: 'purple', makes: 'redPurple' },
+    { a: 'yellow', b: 'orange', makes: 'yellowOrange' },
+    { a: 'yellow', b: 'green', makes: 'yellowGreen' },
+    { a: 'yellow', b: 'purple', makes: 'brown' },
+    { a: 'blue', b: 'orange', makes: 'brown' },
+    { a: 'blue', b: 'green', makes: 'blueGreen' },
+    { a: 'blue', b: 'purple', makes: 'bluePurple' }
+  ],
+  light: [
+    { a: 'red', b: 'green', makes: 'yellow' },
+    { a: 'green', b: 'blue', makes: 'cyan' },
+    { a: 'red', b: 'blue', makes: 'magenta' },
+    { a: 'red', b: 'yellow', makes: 'orange' },
+    { a: 'red', b: 'cyan', makes: 'white' },
+    { a: 'red', b: 'magenta', makes: 'rose' },
+    { a: 'green', b: 'yellow', makes: 'lime' },
+    { a: 'green', b: 'cyan', makes: 'mint' },
+    { a: 'green', b: 'magenta', makes: 'white' },
+    { a: 'blue', b: 'yellow', makes: 'white' },
+    { a: 'blue', b: 'cyan', makes: 'sky' },
+    { a: 'blue', b: 'magenta', makes: 'violet' }
+  ]
+};
+
+// >>>>> fnMyLogger <<<<<
+// Browser version of the house logger. The published fnMyLogger writes to a
+// Google Sheet through Apps Script, which a web page cannot reach, so this
+// one keeps the same name and parameters and writes to the browser console.
+function fnMyLogger(pMessage_str, pFunction_str, pValues_str, pLineNumber_int, pIsError_bol) {
+  const cLogType_str = pIsError_bol ? 'Error' : 'Log';
+  const cLine_str = [cLogType_str, 'Mix It Up', pFunction_str, pLineNumber_int, String(pMessage_str), pValues_str].join(' | ');
+  if (pIsError_bol) {
+    console.error(cLine_str);
+  } else {
+    console.log(cLine_str);
+  }
+}
+
+// >>>>> fnLineNumber_int <<<<<
+// The line number an error was raised on, read from its stack trace.
+// Returns 'N/A' when the stack carries no line number.
+function fnLineNumber_int(pError_obj) {
+  const cStack_str = String(pError_obj && pError_obj.stack ? pError_obj.stack : '');
+  const cMatch_arr = cStack_str.match(/:(\d+)(?::\d+)?\)?\s*$/m);
+  const cRadix_int = 10;
+  if (cMatch_arr) {
+    return parseInt(cMatch_arr[1], cRadix_int);
+  }
+  return 'N/A';
+}
+
+// >>>>> fnMixKey_str <<<<<
+// One key for a pair of colors, the same whichever order they come in.
+function fnMixKey_str(pFirst_str, pSecond_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = pFirst_str + ', ' + pSecond_str;
+    return [pFirst_str, pSecond_str].sort().join(cMixJoiner_str);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnMixKey_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return '';
+}
+
+// >>>>> fnMix_str <<<<<
+// The color id that two colors make together in the given color type.
+function fnMix_str(pMode_str, pFirst_str, pSecond_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vKey_str;
+  var vRow_obj;
+  try {
+    vValues_str = [pMode_str, pFirst_str, pSecond_str].join(', ');
+    if (pFirst_str === pSecond_str) {
+      return pFirst_str;
+    }
+    vKey_str = fnMixKey_str(pFirst_str, pSecond_str);
+    for (vRow_obj of cMixList_obj[pMode_str]) {
+      if (fnMixKey_str(vRow_obj.a, vRow_obj.b) === vKey_str) {
+        return vRow_obj.makes;
+      }
+    }
+    throw new Error('No mix is listed for ' + vKey_str);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnMix_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return '';
+}
+
+// >>>>> fnChoiceIds_arr <<<<<
+// The six colors the player can tap: the three primaries and the three
+// goal colors for the given color type.
+function fnChoiceIds_arr(pMode_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vIds_arr;
+  var vRecipe_obj;
+  try {
+    vValues_str = pMode_str;
+    vIds_arr = cPrimaries_obj[pMode_str].slice();
+    for (vRecipe_obj of cRecipes_obj[pMode_str]) {
+      vIds_arr.push(vRecipe_obj.target);
+    }
+    return vIds_arr;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnChoiceIds_arr', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return [];
+}
+
+// >>>>> fnShuffle_arr <<<<<
+// A shuffled copy of a list. The random-number function is passed in so a
+// test can deal the same game twice.
+function fnShuffle_arr(pItems_arr, pRandom_fnc) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vCopy_arr;
+  var vIndex_int;
+  var vSwap_int;
+  var vHold_obj;
+  try {
+    vValues_str = String(pItems_arr.length) + ' items';
+    vCopy_arr = pItems_arr.slice();
+    for (vIndex_int = vCopy_arr.length - 1; vIndex_int > 0; vIndex_int--) {
+      vSwap_int = Math.floor(pRandom_fnc() * (vIndex_int + 1));
+      vHold_obj = vCopy_arr[vIndex_int];
+      vCopy_arr[vIndex_int] = vCopy_arr[vSwap_int];
+      vCopy_arr[vSwap_int] = vHold_obj;
+    }
+    return vCopy_arr;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnShuffle_arr', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return pItems_arr;
+}
+
+// >>>>> fnDealGame_arr <<<<<
+// Deals a fresh game. Each round starts from its answer: pick a goal color,
+// show one of the two primaries that make it, and the other one is the
+// answer. The goal colors come in a shuffled order, one per round.
+function fnDealGame_arr(pMode_str, pRandom_fnc) {
+  const cHalf_flt = 0.5;
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vRecipes_arr;
+  var vRounds_arr;
+  var vRecipe_obj;
+  var vShowA_bol;
+  var vIndex_int;
+  try {
+    vValues_str = pMode_str;
+    vRecipes_arr = fnShuffle_arr(cRecipes_obj[pMode_str], pRandom_fnc);
+    vRounds_arr = [];
+    for (vIndex_int = 0; vIndex_int < cRoundsPerGame_int; vIndex_int++) {
+      vRecipe_obj = vRecipes_arr[vIndex_int % vRecipes_arr.length];
+      vShowA_bol = pRandom_fnc() < cHalf_flt;
+      vRounds_arr.push({
+        target: vRecipe_obj.target,
+        shown: vShowA_bol ? vRecipe_obj.a : vRecipe_obj.b,
+        answer: vShowA_bol ? vRecipe_obj.b : vRecipe_obj.a,
+        choices: fnShuffle_arr(fnChoiceIds_arr(pMode_str), pRandom_fnc)
+      });
+    }
+    return vRounds_arr;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnDealGame_arr', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return [];
+}
+
+// >>>>> fnIsRight_bol <<<<<
+// True when the tapped color, mixed with the shown color, makes the goal.
+function fnIsRight_bol(pMode_str, pRound_obj, pChoice_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = pMode_str + ', ' + pChoice_str;
+    return fnMix_str(pMode_str, pRound_obj.shown, pChoice_str) === pRound_obj.target;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnIsRight_bol', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return false;
+}
+</script>
+
+<script>
+// >>>>> Mix It Up: Page Behavior <<<<<
+// Draws the screens and handles taps. The rules and color data live in the
+// logic block above this one.
+
+// Page state, set by fnStartGame and changed as the player taps.
+var gMode_str;
+var gRounds_arr;
+var gRoundIndex_int;
+var gScore_int;
+var gFirstTry_bol;
+var gRoundDone_bol;
+var gMarks_arr;
+
+const cScreenIds_arr = ['startScreen', 'playScreen', 'endScreen'];
+const cAnimationClasses_arr = ['pop', 'nudge', 'drop'];
+const cMarkPending_str = 'pending';
+const cMarkStar_str = 'star';
+const cMarkDone_str = 'done';
+const cNumberWords_arr = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const cModeCaptions_obj = {
+  paint: 'Paint starts from red, yellow, and blue.',
+  light: 'Light starts from red, green, and blue.'
+};
+const cReducedMotionQuery_str = '(prefers-reduced-motion: reduce)';
+const cConfettiPieces_int = 16;
+const cConfettiMs_int = 950;
+const cConfettiReach_flt = 74;
+const cConfettiMinShare_flt = 0.55;
+const cStarPoints_str = '12,2 14.9,8.6 22,9.3 16.6,14 18.2,21 12,17.3 5.8,21 7.4,14 2,9.3 9.1,8.6';
+
+// >>>>> fnEl_obj <<<<<
+// The page element with the given id.
+function fnEl_obj(pId_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = pId_str;
+    return document.getElementById(pId_str);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnEl_obj', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return null;
+}
+
+// >>>>> fnCapitalize_str <<<<<
+// The text with its first letter in capitals, for the start of a sentence.
+function fnCapitalize_str(pText_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = pText_str;
+    return pText_str.charAt(0).toUpperCase() + pText_str.slice(1);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnCapitalize_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return pText_str;
+}
+
+// >>>>> fnNumberWord_str <<<<<
+// Small numbers spelled out for the end-screen sentences.
+function fnNumberWord_str(pNumber_int) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = String(pNumber_int);
+    if (pNumber_int >= 0 && pNumber_int < cNumberWords_arr.length) {
+      return cNumberWords_arr[pNumber_int];
+    }
+    return String(pNumber_int);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnNumberWord_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return '';
+}
+
+// >>>>> fnSeed_int <<<<<
+// A steady number made from a color id, so each paint color always gets
+// the same blob shape.
+function fnSeed_int(pText_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vSeed_int;
+  var vIndex_int;
+  try {
+    vValues_str = pText_str;
+    vSeed_int = 0;
+    for (vIndex_int = 0; vIndex_int < pText_str.length; vIndex_int++) {
+      vSeed_int += pText_str.charCodeAt(vIndex_int) * (vIndex_int + 1);
+    }
+    return vSeed_int;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnSeed_int', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return 0;
+}
+
+// >>>>> fnBlobPath_str <<<<<
+// An SVG outline for a wobbly paint blob in a 100 by 100 box. Points sit
+// around a circle at slightly different distances, and the outline curves
+// through the midpoints between them so it stays smooth and closed.
+function fnBlobPath_str(pSeed_int) {
+  const cPointCount_int = 9;
+  const cCenter_flt = 50;
+  const cBaseRadius_flt = 41;
+  const cWobble_flt = 4.5;
+  const cSeedStep_flt = 1.7;
+  const cPointStep_flt = 2.3;
+  const cFullTurn_flt = Math.PI * 2;
+  const cHalf_flt = 0.5;
+  const cDecimals_int = 1;
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vPoints_arr;
+  var vIndex_int;
+  var vAngle_flt;
+  var vRadius_flt;
+  var vNow_obj;
+  var vNext_obj;
+  var vLast_obj;
+  var vPath_str;
+  try {
+    vValues_str = 'seed ' + pSeed_int;
+    vPoints_arr = [];
+    for (vIndex_int = 0; vIndex_int < cPointCount_int; vIndex_int++) {
+      vAngle_flt = cFullTurn_flt * vIndex_int / cPointCount_int;
+      vRadius_flt = cBaseRadius_flt + cWobble_flt * Math.sin(pSeed_int * cSeedStep_flt + vIndex_int * cPointStep_flt);
+      vPoints_arr.push({
+        x: cCenter_flt + vRadius_flt * Math.cos(vAngle_flt),
+        y: cCenter_flt + vRadius_flt * Math.sin(vAngle_flt)
+      });
+    }
+    vLast_obj = vPoints_arr[vPoints_arr.length - 1];
+    vPath_str = 'M' + ((vLast_obj.x + vPoints_arr[0].x) * cHalf_flt).toFixed(cDecimals_int) + ' ' + ((vLast_obj.y + vPoints_arr[0].y) * cHalf_flt).toFixed(cDecimals_int);
+    for (vIndex_int = 0; vIndex_int < vPoints_arr.length; vIndex_int++) {
+      vNow_obj = vPoints_arr[vIndex_int];
+      vNext_obj = vPoints_arr[(vIndex_int + 1) % vPoints_arr.length];
+      vPath_str += ' Q' + vNow_obj.x.toFixed(cDecimals_int) + ' ' + vNow_obj.y.toFixed(cDecimals_int) + ' ' + ((vNow_obj.x + vNext_obj.x) * cHalf_flt).toFixed(cDecimals_int) + ' ' + ((vNow_obj.y + vNext_obj.y) * cHalf_flt).toFixed(cDecimals_int);
+    }
+    return vPath_str + ' Z';
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnBlobPath_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return '';
+}
+
+// >>>>> fnSwatchHtml_str <<<<<
+// The drawing for one color: a glossy blob for paint, a glowing spot for light.
+function fnSwatchHtml_str(pMode_str, pColorId_str) {
+  const cHighlight_str = '<ellipse cx="35" cy="33" rx="11" ry="6" fill="#FFFFFF" opacity="0.45" transform="rotate(-35 35 33)"></ellipse>';
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vColor_obj;
+  try {
+    vValues_str = pMode_str + ', ' + pColorId_str;
+    vColor_obj = cColors_obj[pMode_str][pColorId_str];
+    if (pMode_str === cLightMode_str) {
+      return '<span class="glow" style="--c: ' + vColor_obj.hex + '" aria-hidden="true"></span>';
+    }
+    return '<svg class="sw" viewBox="0 0 100 100" aria-hidden="true"><path d="' + fnBlobPath_str(fnSeed_int(pColorId_str)) + '" fill="' + vColor_obj.hex + '" stroke="rgba(46, 35, 64, 0.18)" stroke-width="2"></path>' + cHighlight_str + '</svg>';
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnSwatchHtml_str', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+  return '';
+}
+
+// >>>>> fnReplayAnimation <<<<<
+// Restarts a short animation on an element, even if it just played.
+function fnReplayAnimation(pEl_obj, pClass_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vClass_str;
+  try {
+    vValues_str = pClass_str;
+    for (vClass_str of cAnimationClasses_arr) {
+      pEl_obj.classList.remove(vClass_str);
+    }
+    // Reading the width makes the browser notice the removal before the
+    // class comes back, which is what lets the animation play again.
+    void pEl_obj.offsetWidth;
+    pEl_obj.classList.add(pClass_str);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnReplayAnimation', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnShowScreen <<<<<
+// Shows one screen and hides the other two.
+function fnShowScreen(pId_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vId_str;
+  try {
+    vValues_str = pId_str;
+    for (vId_str of cScreenIds_arr) {
+      fnEl_obj(vId_str).hidden = vId_str !== pId_str;
+    }
+    window.scrollTo(0, 0);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnShowScreen', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnRenderPreview <<<<<
+// Fills the start-screen panel with the three primaries for the chosen
+// color type, so the switch shows what it changes.
+function fnRenderPreview() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vPanel_obj;
+  var vHtml_str;
+  var vId_str;
+  try {
+    vValues_str = gMode_str;
+    vPanel_obj = fnEl_obj('startPreview');
+    vPanel_obj.className = 'panel preview ' + gMode_str;
+    vHtml_str = '<div class="preview-row">';
+    for (vId_str of cPrimaries_obj[gMode_str]) {
+      vHtml_str += '<div class="cell"><div class="cellsw">' + fnSwatchHtml_str(gMode_str, vId_str) + '</div><span class="cap">' + cColors_obj[gMode_str][vId_str].label + '</span></div>';
+    }
+    vHtml_str += '</div><p class="preview-caption">' + cModeCaptions_obj[gMode_str] + '</p>';
+    vPanel_obj.innerHTML = vHtml_str;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnRenderPreview', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnSetMode <<<<<
+// Switches between paint and light and updates both switches to match.
+function fnSetMode(pMode_str) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vButton_obj;
+  try {
+    vValues_str = pMode_str;
+    gMode_str = pMode_str;
+    for (vButton_obj of document.querySelectorAll('.toggle button')) {
+      vButton_obj.setAttribute('aria-pressed', String(vButton_obj.dataset.mode === pMode_str));
+    }
+    fnRenderPreview();
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnSetMode', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnRenderScore <<<<<
+// Updates the round number, the three round marks, and the score.
+function fnRenderScore() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vHtml_str;
+  var vMark_str;
+  try {
+    vValues_str = 'round ' + gRoundIndex_int + ', score ' + gScore_int;
+    fnEl_obj('roundLabel').textContent = 'Round ' + (gRoundIndex_int + 1) + ' of ' + gRounds_arr.length;
+    vHtml_str = '';
+    for (vMark_str of gMarks_arr) {
+      if (vMark_str === cMarkStar_str) {
+        vHtml_str += '<svg class="mark star" viewBox="0 0 24 24" aria-hidden="true"><polygon points="' + cStarPoints_str + '"></polygon></svg>';
+      } else {
+        vHtml_str += '<span class="mark ' + vMark_str + '" aria-hidden="true"></span>';
+      }
+    }
+    fnEl_obj('marks').innerHTML = vHtml_str;
+    fnEl_obj('scoreLabel').textContent = 'Score: ' + gScore_int;
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnRenderScore', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnRenderRound <<<<<
+// Draws the current round: the shown primary, an empty slot, the goal
+// color, and the six colors to tap.
+function fnRenderRound() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vRound_obj;
+  var vColors_obj;
+  var vHtml_str;
+  var vId_str;
+  try {
+    vValues_str = 'round ' + gRoundIndex_int;
+    vRound_obj = gRounds_arr[gRoundIndex_int];
+    vColors_obj = cColors_obj[gMode_str];
+    gFirstTry_bol = true;
+    gRoundDone_bol = false;
+    fnEl_obj('playPanel').className = 'panel ' + gMode_str;
+    fnEl_obj('eqShown').innerHTML = fnSwatchHtml_str(gMode_str, vRound_obj.shown);
+    fnEl_obj('eqShownLabel').textContent = vColors_obj[vRound_obj.shown].label;
+    fnEl_obj('eqSlot').innerHTML = '<span class="ring" aria-hidden="true">?</span>';
+    fnEl_obj('eqSlotLabel').textContent = '';
+    fnEl_obj('eqTarget').innerHTML = fnSwatchHtml_str(gMode_str, vRound_obj.target);
+    fnEl_obj('eqTargetLabel').textContent = vColors_obj[vRound_obj.target].label;
+    fnEl_obj('feedback').innerHTML = 'What mixes with <b>' + vColors_obj[vRound_obj.shown].name + '</b> to make <b>' + vColors_obj[vRound_obj.target].name + '</b>?';
+    vHtml_str = '';
+    for (vId_str of vRound_obj.choices) {
+      vHtml_str += '<button type="button" class="choice" data-color="' + vId_str + '" aria-label="' + vColors_obj[vId_str].label + '"><span class="swbox">' + fnSwatchHtml_str(gMode_str, vId_str) + '</span><span class="cap">' + vColors_obj[vId_str].label + '</span></button>';
+    }
+    fnEl_obj('choices').innerHTML = vHtml_str;
+    fnEl_obj('nextBtn').hidden = true;
+    fnRenderScore();
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnRenderRound', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnStartGame <<<<<
+// Deals a fresh game in the chosen color type and shows round one.
+function fnStartGame() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vIndex_int;
+  try {
+    vValues_str = gMode_str;
+    gRounds_arr = fnDealGame_arr(gMode_str, Math.random);
+    gRoundIndex_int = 0;
+    gScore_int = 0;
+    gMarks_arr = [];
+    for (vIndex_int = 0; vIndex_int < gRounds_arr.length; vIndex_int++) {
+      gMarks_arr.push(cMarkPending_str);
+    }
+    fnShowScreen('playScreen');
+    fnRenderRound();
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnStartGame', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnRemoveBits <<<<<
+// Clears the confetti pieces once their animation is over.
+function fnRemoveBits(pBits_arr) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vBit_obj;
+  try {
+    vValues_str = String(pBits_arr.length) + ' bits';
+    for (vBit_obj of pBits_arr) {
+      vBit_obj.remove();
+    }
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnRemoveBits', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnCelebrate <<<<<
+// The happy moment for a right answer: the goal color pops and a burst of
+// dots in the three round colors flies out of it. The burst is skipped for
+// players who have asked their device for less motion.
+function fnCelebrate(pRound_obj) {
+  const cFullTurn_flt = Math.PI * 2;
+  const cHalf_flt = 0.5;
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vPanel_obj;
+  var vTarget_obj;
+  var vPanelBox_obj;
+  var vTargetBox_obj;
+  var vCenterX_flt;
+  var vCenterY_flt;
+  var vHexes_arr;
+  var vBits_arr;
+  var vBit_obj;
+  var vIndex_int;
+  var vAngle_flt;
+  var vReach_flt;
+  try {
+    vValues_str = pRound_obj.target;
+    vTarget_obj = fnEl_obj('eqTarget');
+    fnReplayAnimation(vTarget_obj, 'pop');
+    if (window.matchMedia(cReducedMotionQuery_str).matches) {
+      return;
+    }
+    vPanel_obj = fnEl_obj('playPanel');
+    vPanelBox_obj = vPanel_obj.getBoundingClientRect();
+    vTargetBox_obj = vTarget_obj.getBoundingClientRect();
+    vCenterX_flt = vTargetBox_obj.left + vTargetBox_obj.width * cHalf_flt - vPanelBox_obj.left;
+    vCenterY_flt = vTargetBox_obj.top + vTargetBox_obj.height * cHalf_flt - vPanelBox_obj.top;
+    vHexes_arr = [
+      cColors_obj[gMode_str][pRound_obj.shown].hex,
+      cColors_obj[gMode_str][pRound_obj.answer].hex,
+      cColors_obj[gMode_str][pRound_obj.target].hex
+    ];
+    vBits_arr = [];
+    for (vIndex_int = 0; vIndex_int < cConfettiPieces_int; vIndex_int++) {
+      vAngle_flt = cFullTurn_flt * vIndex_int / cConfettiPieces_int;
+      vReach_flt = cConfettiReach_flt * (cConfettiMinShare_flt + Math.random() * (1 - cConfettiMinShare_flt));
+      vBit_obj = document.createElement('span');
+      vBit_obj.className = 'bit';
+      vBit_obj.style.left = vCenterX_flt + 'px';
+      vBit_obj.style.top = vCenterY_flt + 'px';
+      vBit_obj.style.background = vHexes_arr[vIndex_int % vHexes_arr.length];
+      vBit_obj.style.setProperty('--dx', (Math.cos(vAngle_flt) * vReach_flt) + 'px');
+      vBit_obj.style.setProperty('--dy', (Math.sin(vAngle_flt) * vReach_flt) + 'px');
+      vPanel_obj.appendChild(vBit_obj);
+      vBits_arr.push(vBit_obj);
+    }
+    window.setTimeout(fnRemoveBits, cConfettiMs_int, vBits_arr);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnCelebrate', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnPickChoice <<<<<
+// Handles a tap on one of the six colors. A right answer celebrates and
+// counts toward the score only on the first tap of the round. A wrong
+// answer shows what that mix makes, dims that color, and lets the player
+// try again, so every round can be finished.
+function fnPickChoice(pChoice_str, pButton_obj) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vRound_obj;
+  var vColors_obj;
+  var vMade_str;
+  var vSentence_str;
+  var vButton_obj;
+  var vIsLast_bol;
+  try {
+    vValues_str = 'choice ' + pChoice_str;
+    if (gRoundDone_bol || pButton_obj.disabled) {
+      return;
+    }
+    vRound_obj = gRounds_arr[gRoundIndex_int];
+    vColors_obj = cColors_obj[gMode_str];
+    vMade_str = fnMix_str(gMode_str, vRound_obj.shown, pChoice_str);
+    vSentence_str = fnCapitalize_str(vColors_obj[vRound_obj.shown].name) + ' + ' + vColors_obj[pChoice_str].name + ' makes ' + vColors_obj[vMade_str].name + '.';
+    fnEl_obj('eqSlot').innerHTML = fnSwatchHtml_str(gMode_str, pChoice_str);
+    fnEl_obj('eqSlotLabel').textContent = vColors_obj[pChoice_str].label;
+    if (fnIsRight_bol(gMode_str, vRound_obj, pChoice_str)) {
+      gRoundDone_bol = true;
+      if (gFirstTry_bol) {
+        gScore_int += 1;
+        gMarks_arr[gRoundIndex_int] = cMarkStar_str;
+      } else {
+        gMarks_arr[gRoundIndex_int] = cMarkDone_str;
+      }
+      for (vButton_obj of fnEl_obj('choices').querySelectorAll('.choice')) {
+        vButton_obj.disabled = true;
+      }
+      pButton_obj.classList.add('right');
+      fnReplayAnimation(fnEl_obj('eqSlot'), 'drop');
+      fnEl_obj('feedback').innerHTML = '<strong>Yes!</strong> ' + vSentence_str;
+      fnRenderScore();
+      fnCelebrate(vRound_obj);
+      vIsLast_bol = gRoundIndex_int + 1 >= gRounds_arr.length;
+      fnEl_obj('nextBtn').textContent = vIsLast_bol ? 'See My Score' : 'Next Round';
+      fnEl_obj('nextBtn').hidden = false;
+    } else {
+      gFirstTry_bol = false;
+      pButton_obj.disabled = true;
+      pButton_obj.classList.add('tried');
+      fnReplayAnimation(fnEl_obj('eqSlot'), 'nudge');
+      fnEl_obj('feedback').innerHTML = '<span class="sw-inline">' + fnSwatchHtml_str(gMode_str, vMade_str) + '</span>' + vSentence_str + ' Try again!';
+    }
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnPickChoice', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnShowEnd <<<<<
+// Shows the total, and the hot cocoa when the player got enough rounds
+// right on the first tap.
+function fnShowEnd() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vWon_bol;
+  var vScore_str;
+  try {
+    vValues_str = 'score ' + gScore_int;
+    vWon_bol = gScore_int >= cWinsNeeded_int;
+    fnEl_obj('mug').setAttribute('class', 'mug ' + (vWon_bol ? 'full' : 'empty'));
+    fnEl_obj('mug').setAttribute('aria-label', vWon_bol ? 'A steaming mug of hot cocoa' : 'An empty mug');
+    fnEl_obj('endTitle').textContent = vWon_bol ? 'You Won!' : 'So Close!';
+    vScore_str = 'You got ' + fnNumberWord_str(gScore_int) + ' out of ' + fnNumberWord_str(gRounds_arr.length) + ' right on your first tap.';
+    if (!vWon_bol) {
+      vScore_str += ' Get ' + fnNumberWord_str(cWinsNeeded_int) + ' to win the hot cocoa.';
+    }
+    fnEl_obj('endScore').textContent = vScore_str;
+    fnEl_obj('endPrize').hidden = !vWon_bol;
+    fnShowScreen('endScreen');
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnShowEnd', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnNextRound <<<<<
+// Moves to the next round, or to the end screen after the last one.
+function fnNextRound() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = 'round ' + gRoundIndex_int;
+    gRoundIndex_int += 1;
+    if (gRoundIndex_int >= gRounds_arr.length) {
+      fnShowEnd();
+    } else {
+      fnRenderRound();
+    }
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnNextRound', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnOnToggleClick <<<<<
+// Handles a tap on Paint or Light.
+function fnOnToggleClick(pEvent_obj) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  try {
+    vValues_str = pEvent_obj.currentTarget.dataset.mode;
+    fnSetMode(pEvent_obj.currentTarget.dataset.mode);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnOnToggleClick', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnOnChoiceClick <<<<<
+// Finds which color button was tapped inside the choices grid.
+function fnOnChoiceClick(pEvent_obj) {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vButton_obj;
+  try {
+    vButton_obj = pEvent_obj.target.closest('.choice');
+    if (!vButton_obj) {
+      return;
+    }
+    vValues_str = vButton_obj.dataset.color;
+    fnPickChoice(vButton_obj.dataset.color, vButton_obj);
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnOnChoiceClick', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+// >>>>> fnBoot <<<<<
+// Connects the buttons and opens the start screen in paint mode.
+function fnBoot() {
+  var vValues_str = '';
+  var vIsError_bol = true;
+  var vButton_obj;
+  try {
+    for (vButton_obj of document.querySelectorAll('.toggle button')) {
+      vButton_obj.addEventListener('click', fnOnToggleClick);
+    }
+    fnEl_obj('startBtn').addEventListener('click', fnStartGame);
+    fnEl_obj('choices').addEventListener('click', fnOnChoiceClick);
+    fnEl_obj('nextBtn').addEventListener('click', fnNextRound);
+    fnEl_obj('againBtn').addEventListener('click', fnStartGame);
+    fnSetMode(cPaintMode_str);
+    fnShowScreen('startScreen');
+  } catch (vError_obj) {
+    fnMyLogger(vError_obj, 'fnBoot', vValues_str, fnLineNumber_int(vError_obj), vIsError_bol);
+  }
+}
+
+fnBoot();
+</script>
+</body>
+</html>
