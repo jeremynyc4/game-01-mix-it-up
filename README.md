@@ -24,7 +24,8 @@ You need a phone or a computer with a web browser, and the game is for one playe
 | Round | Who played | Where they got stuck | What I changed |
 | --- | --- | --- | --- |
 | 1 | me | Nowhere. Everything worked. | Added a watercolor fall background with leaves, sweaters, a creek, hiking boots, and a small cup of cocoa. |
-| 2 |  |  |  |
+| 2 | my younger daughter | The instructions confused her, and she could not tell whether to drag and drop a color or tap it. | Nothing yet. |
+| 3 |  |  |  |
 
 ## Made with
 
